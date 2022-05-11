@@ -61,11 +61,12 @@ runs:
         -H "Authorization: Bearer ${{ inputs.api-key }}")
         echo $REVIEW_APP_ENV 
         echo ::set-output name=REVIEW_APP_ENV::$(echo $REVIEW_APP_ENV)
-    - name: Create App
+    - name: Create Review App
+      id: create_review_app
       if: ${{ github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'reopened') }}
       shell: bash
       run: |
-        export SOURCE_GET_URL=$(echo ${{ toJSON(steps.source_endpoint.outputs.SOURCE_ENDPOINT) }} | jq -r '.get')
+        export REVIEW_APP_ID=$(export SOURCE_GET_URL=$(echo ${{ toJSON(steps.source_endpoint.outputs.SOURCE_ENDPOINT) }} | jq -r '.get')
         curl -X POST https://api.heroku.com/review-apps \
         -d '{
         "source_blob": {"url": "'"$SOURCE_GET_URL"'", "version": "'"${{ github.event.pull_request.head.sha }}"'"},
@@ -76,7 +77,33 @@ runs:
         }' \
         -H "Content-Type: application/json" \
         -H "Accept: application/vnd.heroku+json; version=3" \
+        -H "Authorization: Bearer ${{ inputs.api-key }}" | jq -r .id)
+        echo $REVIEW_APP_ID 
+        echo ::set-output name=REVIEW_APP_ID::$(echo $REVIEW_APP_ID)
+    - name: Get App ID
+      id: get_app_id
+      if: ${{ github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'reopened') }}
+      shell: bash
+      run: |
+        sleep 5
+        export APP_ID=$(curl -n https://api.heroku.com/review-apps/${{ steps.create_review_app.outputs.REVIEW_APP_ID }} \
+        -H "Accept: application/vnd.heroku+json; version=3" \
+        -H "Authorization: Bearer ${{ inputs.api-key }}" \
+        | jq -r .app.id)
+        echo $APP_ID 
+        echo ::set-output name=APP_ID::$(echo $APP_ID)
+    - name: Update App name
+      if: ${{ github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'reopened') }}
+      shell: bash
+      run: |
+        curl -n -X PATCH https://api.heroku.com/apps/${{ steps.get_app_id.outputs.APP_ID }} \
+        -d '{
+          "name": "'"$APP_NAME"'"
+        }' \
+        -H "Content-Type: application/json" \
+        -H "Accept: application/vnd.heroku+json; version=3"  \
         -H "Authorization: Bearer ${{ inputs.api-key }}"
+
     - name: Create Build
       if: ${{ github.event_name == 'pull_request' && github.event.action == 'synchronize' }}
       shell: bash

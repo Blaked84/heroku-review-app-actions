@@ -59,7 +59,7 @@ runs:
         export REVIEW_APP_ENV=$(curl -n https://api.heroku.com/pipelines/$PIPELINE_ID/stage/review/config-vars \
         -H "Accept: application/vnd.heroku+json; version=3" \
         -H "Authorization: Bearer ${{ inputs.api-key }}")
-        echo $REVIEW_APP_ENV 
+        echo "::add-mask::$REVIEW_APP_ENV"
         echo ::set-output name=REVIEW_APP_ENV::$(echo $REVIEW_APP_ENV)
     - name: Create Review App
       id: create_review_app
@@ -78,7 +78,6 @@ runs:
         -H "Content-Type: application/json" \
         -H "Accept: application/vnd.heroku+json; version=3" \
         -H "Authorization: Bearer ${{ inputs.api-key }}" | jq -r .id)
-        echo $REVIEW_APP_ID 
         echo ::set-output name=REVIEW_APP_ID::$(echo $REVIEW_APP_ID)
     - name: Get App ID
       id: get_app_id
@@ -90,7 +89,6 @@ runs:
         -H "Accept: application/vnd.heroku+json; version=3" \
         -H "Authorization: Bearer ${{ inputs.api-key }}" \
         | jq -r .app.id)
-        echo $APP_ID 
         echo ::set-output name=APP_ID::$(echo $APP_ID)
     - name: Update App name
       if: ${{ github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'reopened') }}
